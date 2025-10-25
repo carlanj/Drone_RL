@@ -10,17 +10,17 @@ The project trains autonomous quadrotor agents in a high-fidelity Unreal Engine 
 - and land safely near a designated target.
 
 Three deep reinforcement learning (DRL) algorithms are implemented and compared under consistent sensing, reward, and environment conditions:
-- **Deep Q-Network (DQN)** – off-policy, discrete action space:contentReference[oaicite:1]{index=1}
-- **Proximal Policy Optimization (PPO)** – on-policy, continuous action space:contentReference[oaicite:2]{index=2}
-- **Deep Deterministic Policy Gradient (DDPG)** – off-policy, continuous action space:contentReference[oaicite:3]{index=3}
+- **Deep Q-Network (DQN)** – off-policy, discrete action space
+- **Proximal Policy Optimization (PPO)** – on-policy, continuous action space
+- **Deep Deterministic Policy Gradient (DDPG)** – off-policy, continuous action space
 
-The agent relies primarily on LiDAR range data for perception, rather than relying on GPS or vision alone, to better handle cluttered and GPS-denied navigation scenarios:contentReference[oaicite:4]{index=4}.
+The agent relies primarily on LiDAR range data for perception, rather than relying on GPS or vision alone, to better handle cluttered and GPS-denied navigation scenarios
 
 ---
 
 ## Goals of the System
 
-- Learn safe, goal-directed navigation in a cluttered 3D obstacle course without hand-coded waypoints or maps:contentReference[oaicite:5]{index=5}
+- Learn safe, goal-directed navigation in a cluttered 3D obstacle course without hand-coded waypoints or maps
 - Study the tradeoffs between on-policy and off-policy learning for UAV control
 - Compare discrete “motion primitive” control vs fully continuous velocity/yaw-rate control
 - Generate policies that can be transferred between different environment configurations inside simulation
@@ -42,7 +42,7 @@ Supports:
 - **Discrete control mode** (for DQN)
 - **Continuous control mode** (for PPO and DDPG)
 
-This environment exposes the standard `reset()` / `step(action)` loop that DRL algorithms expect:contentReference[oaicite:6]{index=6}:contentReference[oaicite:7]{index=7}.
+This environment exposes the standard `reset()` / `step(action)` loop that DRL algorithms expect
 
 ### 2. Training and Evaluation
 Scripts in `CODE/` handle:
@@ -51,7 +51,7 @@ Scripts in `CODE/` handle:
 - saving the “best model,”
 - and periodically running evaluation rollouts.
 
-During evaluation, the agent is flown deterministically and will trigger an autonomous landing routine when it reaches the goal region. After touchdown, the drone disarms and logs the episode result:contentReference[oaicite:8]{index=8}:contentReference[oaicite:9]{index=9}.
+During evaluation, the agent is flown deterministically and will trigger an autonomous landing routine when it reaches the goal region. After touchdown, the drone disarms and logs the episode result
 
 ### 3. Logging and Analytics
 Training and evaluation both log:
@@ -67,7 +67,7 @@ These are written to:
 - Per-episode CSVs
 - Optional per-step CSVs for deep debugging
 
-There’s also a utility (`MAKE_TENSORS.py`) that converts spreadsheet logs from evaluations  into TensorBoard event files so different algorithms / runs can be compared visually:contentReference[oaicite:10]{index=10}.
+There’s also a utility (`MAKE_TENSORS.py`) that converts spreadsheet logs from evaluations  into TensorBoard event files so different algorithms / runs can be compared visually
 
 ---
 
