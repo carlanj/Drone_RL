@@ -1,148 +1,254 @@
-Machine Learning-Based Drone Navigation and Sensor Mapping in Simulated 3D Environments
-Project Overview
+# Machine Learning-Based Drone Navigation and Sensor Mapping in Simulated 3D Environments
 
-This repository accompanies the Master’s thesis research by Carlan Jackson (Alabama A&M University, 2025) on developing an autonomous UAV navigation framework leveraging Reinforcement Learning (RL) and LiDAR-based perception in Microsoft AirSim.
+## Overview
 
-The project implements and compares Deep Q-Networks (DQN), Proximal Policy Optimization (PPO), and Deep Deterministic Policy Gradient (DDPG) algorithms under identical environmental and sensor conditions. The goal is to evaluate their performance in path planning, collision avoidance, and goal-seeking within simulated 3D environments.
+This repository contains the code, simulation pipeline, training logs, evaluation results, and media associated with:
 
-Research Context
+**“Machine Learning-Based Drone Navigation and Sensor Mapping in Simulated 3D Environments”  
+Carlan Jackson, M.S., Alabama A&M University (2025)**:contentReference[oaicite:0]{index=0}
 
-Autonomous UAV navigation remains a central challenge in robotics, particularly in unstructured or cluttered environments such as forests, urban areas, or disaster zones
+The project trains autonomous quadrotor agents in a high-fidelity Unreal Engine / Microsoft AirSim environment to:
+- avoid obstacles,
+- navigate toward a goal,
+- and land safely near a designated target.
 
-FINAL_DRAFT
+Three deep reinforcement learning (DRL) algorithms are implemented and compared under consistent sensing, reward, and environment conditions:
+- **Deep Q-Network (DQN)** – off-policy, discrete action space:contentReference[oaicite:1]{index=1}
+- **Proximal Policy Optimization (PPO)** – on-policy, continuous action space:contentReference[oaicite:2]{index=2}
+- **Deep Deterministic Policy Gradient (DDPG)** – off-policy, continuous action space:contentReference[oaicite:3]{index=3}
 
-. Traditional rule-based and map-dependent planners like A* or Dijkstra struggle in these scenarios due to limited adaptability.
+The agent relies primarily on LiDAR range data for perception, rather than relying on GPS or vision alone, to better handle cluttered and GPS-denied navigation scenarios:contentReference[oaicite:4]{index=4}.
 
-This project explores learning-driven navigation, where agents acquire decision-making policies through trial and error using LiDAR-based sensory input. By training within AirSim’s high-fidelity Unreal Engine environment, the framework achieves both safety in simulation and realism in physical modeling — creating a foundation for future real-world UAV deployment.
+---
 
-System Architecture
+## Goals of the System
 
-The project follows a modular three-tier structure, combining perception, learning, and data analytics.
+- Learn safe, goal-directed navigation in a cluttered 3D obstacle course without hand-coded waypoints or maps:contentReference[oaicite:5]{index=5}
+- Study the tradeoffs between on-policy and off-policy learning for UAV control
+- Compare discrete “motion primitive” control vs fully continuous velocity/yaw-rate control
+- Generate policies that can be transferred between different environment configurations inside simulation
 
-1. Environment Interface
+---
 
-Implements a custom Gymnasium-compatible environment built on AirSim APIs.
+## System Architecture
 
-reset() — Initializes UAV position, altitude, and LiDAR state.
+The project is organized around three core modules:
 
-step(action) — Executes control actions and returns next observation, reward, and termination flags.
+### 1. Environment Interface
+Custom Gymnasium-style environment (see `core_env.py`) that talks directly to AirSim.
+- Handles drone spawn, arming, takeoff, and stabilization at target altitude
+- Gathers LiDAR data + drone state each step
+- Issues velocity / yaw commands through AirSim’s multirotor control API
+- Computes reward, termination, and success/failure reasons
 
-Supports both discrete control (DQN) and continuous control (PPO/DDPG).
+Supports:
+- **Discrete control mode** (for DQN)
+- **Continuous control mode** (for PPO and DDPG)
 
-2. Training Module
+This environment exposes the standard `reset()` / `step(action)` loop that DRL algorithms expect:contentReference[oaicite:6]{index=6}:contentReference[oaicite:7]{index=7}.
 
-Uses Stable-Baselines3 (SB3) for algorithm implementation, handling:
+### 2. Training and Evaluation
+Scripts in `CODE/` handle:
+- running training loops for each algorithm,
+- checkpointing intermediate models,
+- saving the “best model,”
+- and periodically running evaluation rollouts.
 
-Episode management and checkpointing
+During evaluation, the agent is flown deterministically and will trigger an autonomous landing routine when it reaches the goal region. After touchdown, the drone disarms and logs the episode result:contentReference[oaicite:8]{index=8}:contentReference[oaicite:9]{index=9}.
 
-Reward and evaluation tracking
+### 3. Logging and Analytics
+Training and evaluation both log:
+- Episode reward
+- Episode length / steps survived
+- Success or collision reason
+- Goal distance over time
+- Minimum forward clearance from LiDAR
+- Altitude tracking error
 
-TensorBoard logging and replay buffer management
+These are written to:
+- TensorBoard event logs
+- Per-episode CSVs
+- Optional per-step CSVs for deep debugging
 
-3. Data Logging Module
+There’s also a utility (`MAKE_TENSORS.py`) that converts spreadsheet logs from experiments into TensorBoard event files so different algorithms / runs can be compared visually:contentReference[oaicite:10]{index=10}.
 
-Captures:
+---
 
-Episode rewards and success rates
+## Observation Space
 
-Collision and clearance statistics
+Each observation given to the agent is a single fused vector made of:
 
-Time-to-goal metrics
+1. **LiDAR perception**  
+   - A simulated 360° LiDAR ring is sampled around the drone.
+   - Distances are clipped, then downsampled into a fixed number of angular bins.
+   - Values are normalized to `[0, 1]`.  
+   This captures local free space and obstacle proximity without sending the full raw point cloud to the network:contentReference[oaicite:11]{index=11}:contentReference[oaicite:12]{index=12}.
 
-TensorBoard-ready logs (via MAKE_TENSORS.py)
+2. **Ego-state and goal features**  
+   - Body-frame linear velocities (vx, vy, vz_up)  
+   - Altitude error relative to the desired flight band  
+   - Relative goal direction (goal vector in the drone’s body frame)  
+   - Normalized distance-to-goal  
 
-Observation and Action Spaces
-Observation Space
-Component	Description
-LiDAR Scan Vector	360° ring downsampled into fixed bins, representing obstacle distance.
-Ego-State	Body-frame velocities (vx, vy, vz), altitude error, and goal vector.
-Normalization	All sensor inputs scaled to [0, 1] for generalization.
-Action Space
-Mode	Control Type	Description
-DQN	Discrete	Movement primitives: forward, turn left/right, ascend/descend.
-PPO/DDPG	Continuous	4D control vector [yaw_rate, vx, vy, vz] for fine-grained maneuvering.
-Reward Shaping
-Component	Description	Weight
-Progress	Positive reward for reducing goal distance.	12.0
-Clearance	Encourages maintaining safe LiDAR distance.	0.6
-Centering	Penalizes deviation from mid-path.	0.1
-Altitude Stability	Penalizes deviation from desired height.	0.5
-Smoothness	Penalizes abrupt motion transitions.	0.02
-Success / Collision	±100 terminal rewards for goal reach or impact.	—
+Together, this gives the policy awareness of:
+- “What’s around me?”
+- “How am I currently moving?”
+- “Where should I go next?”:contentReference[oaicite:13]{index=13}:contentReference[oaicite:14]{index=14}
 
-This multi-term formulation guides the UAV toward efficient, stable, and collision-free flight
+---
 
-FINAL_DRAFT
+## Action Space
 
+Two modes are supported:
+
+### Discrete control (used by DQN)
+The policy picks from a finite set of motion primitives, e.g.:
+- move forward,
+- yaw left / yaw right,
+- strafe left / strafe right,
+- ascend / descend.
+
+This is well-suited for DQN because Q-learning over a fixed action set is stable and sample-efficient:contentReference[oaicite:15]{index=15}.
+
+### Continuous control (used by PPO / DDPG)
+The policy outputs a 4D continuous vector:
+`[yaw_rate, vx, vy, vz_up]`
+
+- `yaw_rate`: commanded yaw rate (deg/s)  
+- `vx, vy`: body-frame horizontal velocities  
+- `vz_up`: vertical velocity in the drone’s up direction
+
+Each component is clipped to physically reasonable limits (forward speed caps, max climb rate, etc.), producing smooth, physically consistent motion in AirSim:contentReference[oaicite:16]{index=16}:contentReference[oaicite:17]{index=17}:contentReference[oaicite:18]{index=18}.
+
+---
+
+## Reward Design
+
+The reward signal is shaped to balance safety, efficiency, and goal completion:
+
+- **Progress toward goal**  
+  Positive reward when the drone reduces its distance to the target.
+
+- **Obstacle clearance**  
+  Encourages keeping a safe forward gap using LiDAR distance in the frontal sector.
+
+- **Corridor centering**  
+  Rewards staying centered between obstacles instead of scraping walls.
+
+- **Altitude stability**  
+  Penalizes drifting too far from the allowed flight band.
+
+- **Smoothness / control discipline**  
+  Penalizes large jumps between successive control commands to reduce jitter.
+
+- **Terminal events**  
+  + Large positive reward for reaching and landing at/near the goal object  
+  – Large negative penalty on collision
+
+This structure teaches agents not just “don’t crash,” but “get to the goal efficiently, safely, and cleanly”:contentReference[oaicite:19]{index=19}:contentReference[oaicite:20]{index=20}.
+
+---
+
+## Training Workflow
+
+1. **Episode start**
+   - Reset AirSim or just the vehicle (depending on mode).
+   - Take off, stabilize at target altitude.
+   - Sample / assign a navigation goal in the world (e.g. a landing zone marker).
+
+2. **Control loop**
+   - Read LiDAR + drone kinematics.
+   - Policy chooses an action (discrete or continuous).
+   - Action is applied via `moveByVelocityBodyFrameAsync(...)` for a short duration.
+   - Reward is computed.
+   - Episode continues until success, collision, or termination condition.
+
+3. **Logging**
+   - Per-step and per-episode metrics are written to CSV and TensorBoard.
+   - “Best model” snapshots and rolling checkpoints are saved.
+
+4. **Evaluation**
+   - Run the trained agent in deterministic mode.
+   - If it reaches the goal radius, trigger an automated landing and disarm procedure.
+   - Record final return and outcome (success/collision/etc.):contentReference[oaicite:21]{index=21}:contentReference[oaicite:22]{index=22}.
+
+---
+
+## Algorithms
+
+### Deep Q-Network (DQN)
+- Off-policy, value-based
+- Learns Q(s,a) over a discrete action set
+- Uses replay buffer and a target network for stability
+- Good for higher-level motion primitives
+
+### Proximal Policy Optimization (PPO)
+- On-policy, policy-gradient
+- Uses a clipped objective to prevent unstable policy updates
+- Works well with continuous actions and tends to produce smooth trajectories
+
+### Deep Deterministic Policy Gradient (DDPG)
+- Off-policy, actor–critic
+- Learns a deterministic continuous control policy
+- Allows fine-grained velocity/yaw control
+- More sensitive to tuning and exploration noise
+
+All three are trained and evaluated in the same LiDAR-based environment with the same reward model so the comparison is fair across policy families (on-policy vs off-policy) and action spaces (discrete vs continuous):contentReference[oaicite:23]{index=23}.
+
+---
+
+## Results (High-Level)
+
+- **PPO** produced stable, smooth navigation and reliable goal completion once converged.
+- **DQN** learned to reach goals and avoid collisions using only discrete motion primitives. It converged quickly in structured layouts.
+- **DDPG** showed precise control in continuous space but demanded more care in tuning noise, stability, and update cadence.
+
+Both conservative (slower, smoother control loops) and aggressive (faster, higher-speed, tighter response) settings were tested. Agents in both regimes were able to reach the goal region and perform controlled landings in simulation:contentReference[oaicite:24]{index=24}.
+
+---
+
+## Repository Structure
+
+```text
 .
+├── CODE/
+│   ├── Common/                         # Shared env helpers, logging utilities, callbacks
+│   ├── core_env.py                     # Core AirSim <-> Gym environment (discrete + continuous):contentReference[oaicite:25]{index=25}
+│   ├── run_dqn.py                      # Train DQN agent
+│   ├── run.py                          # Train PPO / DDPG agent(s)
+│   ├── eval_dqn.py                     # Evaluate DQN policy + auto-landing routine:contentReference[oaicite:26]{index=26}
+│   ├── eval_ppo.py                     # Evaluate PPO policy + landing and logging:contentReference[oaicite:27]{index=27}
+│   ├── eval_ddpg.py                    # Evaluate DDPG policy
+│   └── MAKE_TENSORS.py                 # Convert spreadsheet logs → TensorBoard events:contentReference[oaicite:28]{index=28}
+│
+├── CONFIG/
+│   └── SETTINGS/                       # JSON configs / scenario settings for runs
+│
+├── DATA/
+│   ├── aggressive/                     # Logs and outputs for aggressive-control runs
+│   └── normaldev/                      # Baseline / conservative-control experiment data
+│
+├── DOCUMENTATION/
+│   ├── FINAL_DRAFT.docx                # Full thesis draft (Word):contentReference[oaicite:29]{index=29}
+│   ├── FINAL_DRAFT.pdf                 # Final thesis PDF:contentReference[oaicite:30]{index=30}
+│   └── PROPOSAL.doc                    # Original research proposal
+│
+├── MODELS/
+│   ├── DQN/
+│   │   ├── best_model/                 # Best-performing checkpoint
+│   │   ├── checkpoints/                # Periodic training checkpoints
+│   │   ├── eval_logs/                  # Evaluation summaries / CSV
+│   │   ├── tensors/                    # TensorBoard scalar logs
+│   │   ├── train_logs/                 # Episode/step CSV logs
+│   │   └── {10k,25k,50k,75k,100k,...}/ # Snapshots grouped by total timesteps trained
+│   └── PPO/
+│       ├── best_model/
+│       ├── checkpoints/
+│       ├── eval_logs/
+│       ├── tensors/
+│       
+│
+├── TENSORBOARDS/ # event.out.tfevents.* files live here
+│  
+│          
 
-Algorithms Implemented
-Algorithm	Type	Action Space	Key Advantage
-DQN	Off-policy	Discrete	Efficient sample use with replay buffers.
-PPO	On-policy	Continuous	Stable policy updates with clipped objectives.
-DDPG	Off-policy	Continuous	Fine-grained continuous control.
-
-Each algorithm is trained and evaluated under identical simulation and reward conditions to enable fair comparison.
-
-Installation and Setup
-Requirements
-conda create -n uav_rl python=3.10
-conda activate uav_rl
-pip install torch gymnasium airsim stable-baselines3 pandas tensorboard
-
-Clone Repository
-git clone https://github.com/<your-username>/UAV-RL-Project.git
-cd UAV-RL-Project
-
-AirSim Environment
-
-Ensure AirSim is installed and running within Unreal Engine (see AirSim setup guide
-).
-
-Running the Code
-Train DQN
-python run_dqn.py
-
-Train PPO or DDPG
-python run.py
-
-Evaluate Agents
-python eval_dqn.py
-python eval_ppo.py
-
-Convert Excel Logs to TensorBoard
-python MAKE_TENSORS.py
-
-Results Summary
-
-Experiments confirmed that:
-
-PPO achieved stable convergence and smooth trajectories.
-
-DQN offered faster learning but with higher oscillation.
-
-DDPG produced continuous, precise motion but required careful hyperparameter tuning.
-
-Under conservative configurations, agents achieved goal completion rates above 90% after convergence, demonstrating effective LiDAR-driven navigation
-
-FINAL_DRAFT
-
-.
-
-Example Outputs
-
-Figure 1: LiDAR point cloud visualization
-Figure 2: TensorBoard training curves (episode reward vs timesteps)
-Figure 3: Path trajectories for PPO vs DQN under identical environments
-
-(Replace with real images or plots in /docs/images/.)
-
-Future Work
-
-Multi-agent UAV coordination
-
-Real-world transfer using onboard LiDAR hardware
-
-Curriculum-based training and noise randomization
-
-Adaptive reward tuning for dynamic obstacles
