@@ -1,9 +1,4 @@
-# airsim_rl_multi.py  —  full, fresh, editable script
-# - Single DroneEnv that is vehicle-/lidar-aware (no globals baked in)
-# - PPOTrainer / PPOCont with unified CSV + TensorBoard logging
-# - PPOEval with configurable logging cadence
-# - MultiEvalPPO to run the SAME model on multiple drones concurrently
-#   (each drone logs to its own subfolder; no global sim reset during multi-eval)
+
 
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -23,8 +18,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback,
 from stable_baselines3 import DDPG
 from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
 
-# (Optional) Monitor for episode stats aggregation (uncomment if you want CSV from SB3)
-# from stable_baselines3.common.monitor import Monitor
+
 
 # TensorBoard
 from torch.utils.tensorboard import SummaryWriter
@@ -49,14 +43,14 @@ import airsim
 # ======================= Global tunables =======================
 # Vehicle/LiDAR default names (instances can override)
 VEHICLE_NAME_DEFAULT = "Drone1"
-LIDAR_NAME_DEFAULT   = "Lidar1"     # must exist on the vehicle; H-FOV 360; DataFrame=SensorLocalFrame
+LIDAR_NAME_DEFAULT   = "Lidar1"     # must exist on the json; H-FOV 360; DataFrame=SensorLocalFrame
 
-# Control cadence
+# Increasing/Descresing this number determines Conservstive vs Agressive
 CHECK_HZ = 6
 CMD_DT   = 1.0 / CHECK_HZ
 
 # Action limits / mappings
-YAW_RATE_CMD_MAX_DEGPS = 145.0      # deg/s (you can bump this for snappier turns)
+YAW_RATE_CMD_MAX_DEGPS = 145.0      # deg/s for sharper turns
 VX_MIN, VX_MAX = 1.2, 7.0        # m/s forward
 VY_MAX = 1.5
 VZ_MAX_UP = 1.0
@@ -68,7 +62,7 @@ RANGE_CLIP_MAX   = 20.0
 USE_HEIGHT_BAND  = (-0.7, 1.8)
 
 # Observation sizing
-OBS_BINS = 60                         # 360 -> 60 via min-pooling
+OBS_BINS = 60                         # 360 -> 60 buckets for the lidar ring
 
 # Goal handling
 GOAL_OBJECT_NAME = "landing_zone"
@@ -76,7 +70,7 @@ GOAL_RADIUS_M    = 1.5
 ALT_GOAL_TOL_M   = 0.6
 GOAL_NORM_M      = 25.0
 
-# Collisions to ignore (case-insensitive substring match)
+# Collisions to ignore 
 IGNORE_COLLISION_TOKENS = {"takeoff_zone"}
 
 # Altitude target (above start); fights slow drift toward ground
@@ -101,7 +95,6 @@ AUTO_LAND_ON_GOAL = True
 GOAL_APPROACH_RADIUS_M = 2.5
 LAND_HOVER_SEC = 0.3
 
-# Grace window after reset to ignore spawn jitter contacts
 COLLISION_GRACE_SEC = 0.8
 
 
@@ -128,10 +121,9 @@ def rotate_world_to_body_xy(yaw, dx_w, dy_w):
     return x_b, y_b
 
 def scan_to_ring(pts):
-    """
-    360-bin ring where index 0 (0°) is straight ahead (body +x),
-    angles increase CCW (left), wrap at 360.
-    """
+    
+    #360-bin ring where index 0 (0°) is straight ahead (body +x), angles increase to the left, wrap at 360.
+ 
     if pts.shape[0] == 0:
         return np.full(BINS, RANGE_CLIP_MAX, dtype=np.float32)
     angles = np.degrees(np.arctan2(pts[:,1], pts[:,0]))   # [-180,180]
@@ -140,7 +132,6 @@ def scan_to_ring(pts):
     bins = np.floor((angles + 360.0) % 360.0).astype(int)
     ring = np.full(BINS, RANGE_CLIP_MAX, dtype=np.float32)
     np.minimum.at(ring, bins, ranges)
-    # small neighbor-min to fill holes
     for _ in range(2):
         ring = np.minimum(ring, np.roll(ring, 1))
         ring = np.minimum(ring, np.roll(ring, -1))
@@ -169,7 +160,7 @@ def left_right_mean_clearance(ring):
     return left_mean, right_mean
 
 
-# ======================= DroneEnv (vehicle-/lidar-aware) =======================
+# ======================= DroneEnv (vehicle/lidar) =======================
 class DroneEnv(gym.Env):
     """
     AirSim multirotor env with LiDAR avoidance + goal seeking.
@@ -190,7 +181,7 @@ class DroneEnv(gym.Env):
         self.lidar_name   = lidar_name
         self.reset_mode   = reset_mode  # "sim" or "vehicle"
 
-        # Actions: a ∈ [-1,1]^4 → [yaw_rate, vx, vy, vz_up]
+        # Actions: a ∈ [-1,1]^4 - [yaw_rate, vx, vy, vz_up]
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(4,), dtype=np.float32)
 
         # Observations: [ring_ds_norm (0..1)^OBS_BINS, vx_b, vy_b, vz_up, alt_err, goal_xb, goal_yb, goal_z_up, dist_norm]
@@ -223,13 +214,13 @@ class DroneEnv(gym.Env):
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
 
-        # simple progress print for last episode
+        # progress print for last episode
         if getattr(self, "step_count", 0) > 0:
             print(f"[{self.vehicle_name}] episode {self.episode_idx} steps={self.step_count}")
         self.episode_idx += 1
         self.step_count = 0
 
-        # Reset world or just this vehicle
+        # Reset world env
         if self.reset_mode == "sim":
             self.client.reset()
 
@@ -240,7 +231,7 @@ class DroneEnv(gym.Env):
         # Goal pose
         gpose = self.client.simGetObjectPose(GOAL_OBJECT_NAME)
         if not (np.isfinite(gpose.position.x_val) and np.isfinite(gpose.position.y_val) and np.isfinite(gpose.position.z_val)):
-            # fallback: virtual goal 30m ahead in world-X
+            
             vpose = self.client.simGetVehiclePose(self.vehicle_name)
             self.goal_world = np.array([vpose.position.x_val + 30.0, vpose.position.y_val, vpose.position.z_val], dtype=np.float32)
         else:
@@ -253,11 +244,11 @@ class DroneEnv(gym.Env):
         # Move to nominal altitude ALT_TARGET_M above start
         vpose = self.client.simGetVehiclePose(self.vehicle_name)
         self.start_z_ned = vpose.position.z_val
-        z_target = self.start_z_ned - ALT_TARGET_M   # NED: up means more negative
+        z_target = self.start_z_ned - ALT_TARGET_M   # NED: In AirSim API up means more negative
         self.client.moveToZAsync(z=z_target, velocity=1.0, vehicle_name=self.vehicle_name).join()
         time.sleep(0.2)
 
-        # Small random initial yaw to diversify
+        #  random initial yaw to simulate inital noise
         yaw0 = float(np.random.uniform(-15.0, 15.0))
         self.client.rotateToYawAsync(yaw0, 5, vehicle_name=self.vehicle_name).join()
         time.sleep(0.1)
@@ -265,7 +256,7 @@ class DroneEnv(gym.Env):
         # Collision grace window (ignore spawn jitter touches)
         self._grace_until = time.time() + COLLISION_GRACE_SEC
 
-        # Bookkeeping
+        # logging
         self.prev_cmd_phys = np.zeros(4, dtype=np.float32)
         obs = self._get_obs()
         self.prev_goal_dist = self._get_goal_distance()
@@ -276,7 +267,7 @@ class DroneEnv(gym.Env):
         self.step_count += 1
         a = np.clip(np.array(action, dtype=np.float32), -1.0, 1.0)
 
-        # ----- Map action to physical commands -----
+        # ----- Map action to drone motion commands -----
         yaw_rate = float(a[0] * YAW_RATE_CMD_MAX_DEGPS)                     # deg/s
         vx       = float(VX_MIN + 0.5*(a[1] + 1.0) * (VX_MAX - VX_MIN))     # [VX_MIN, VX_MAX]
         vy       = float(a[2] * VY_MAX)                                     # [-VY_MAX, VY_MAX]
@@ -317,22 +308,22 @@ class DroneEnv(gym.Env):
         r_smooth = - W_SMOOTH * float(np.linalg.norm(cmd_phys - self.prev_cmd_phys))
         self.prev_cmd_phys = cmd_phys
 
-        # --- Collision / success / auto-land ---
+        # --- Collision / success / auto-land function activation---
         col_info  = self.client.simGetCollisionInfo(self.vehicle_name)
         raw_collided = bool(col_info.has_collided)
         obj_name = (getattr(col_info, "object_name", "") or "")
         name_l = obj_name.lower()
 
-        # True success if we touch the actual landing object
+        # True success if drone touches the actual landing object named in Unreal
         landed_on_goal = raw_collided and (obj_name == GOAL_OBJECT_NAME or obj_name == "END_WALL")
 
-        # Ignore benign hits (e.g., takeoff pad), unless it's the goal
+        # Airsim API treats initial start as a collision with ground - ignore collisions with takeoff object in Unreal
         ignored_hit = raw_collided and (not landed_on_goal) and any(tok in name_l for tok in IGNORE_COLLISION_TOKENS)
 
         # Ignore collisions during the grace window after reset
         in_grace = (time.time() < self._grace_until)
 
-        # Effective collision used for termination
+       
         collided = raw_collided and (not ignored_hit) and (not in_grace)
 
         at_goal  = self._goal_reached()
@@ -355,8 +346,7 @@ class DroneEnv(gym.Env):
             term_reason = "collision"
 
         elif ignored_hit:
-            # optional: tiny shaping penalty to discourage scraping the pad
-            # r_done -= 0.05
+           
             term_reason = "ignored_collision"
 
         truncated = False  # no timeouts
@@ -377,7 +367,7 @@ class DroneEnv(gym.Env):
 
     # ------------- Helpers -------------
     def _lidar_points(self):
-        """Read LiDAR for THIS vehicle/sensor only."""
+      
         data = self.client.getLidarData(lidar_name=self.lidar_name, vehicle_name=self.vehicle_name)
         pts = np.array(data.point_cloud, dtype=np.float32)
         if pts.size == 0:
@@ -494,7 +484,7 @@ class TrainLogger(BaseCallback):
         self.folder = folder
         self.tag = tag
 
-        # resolve stride
+      
         if isinstance(log_every, str):
             v = log_every.lower()
             if v == "episode":
@@ -508,7 +498,7 @@ class TrainLogger(BaseCallback):
         else:
             raise ValueError("log_every must be 'episode', 'step', or int>0")
 
-        # dirs
+        
         self.tb_dir    = os.path.join(self.folder, "tensors")
         self.ep_csvdir = os.path.join(self.folder, "train_logs")
         self.step_dir  = os.path.join(self.folder, "step_logs") if self.step_stride is not None else None
@@ -534,7 +524,7 @@ class TrainLogger(BaseCallback):
     def _on_training_start(self) -> None:
         # TB writer
         self.writer = SummaryWriter(self.tb_dir)
-        # episode CSV (create with header if new)
+        # episode CSV file
         is_new = not os.path.exists(self._ep_csv_path)
         self._ep_csv_file = open(self._ep_csv_path, "a", newline="")
         self._ep_csv_writer = csv.writer(self._ep_csv_file)
@@ -558,7 +548,7 @@ class TrainLogger(BaseCallback):
             self._step_csv_writer = None
 
     def _on_step(self) -> bool:
-        # single-env assumption (matches your current setup)
+       
         infos   = self.locals.get("infos", [])
         dones   = self.locals.get("dones", [])
         rewards = self.locals.get("rewards", [])
@@ -566,7 +556,7 @@ class TrainLogger(BaseCallback):
         done = bool(dones[0]) if len(dones) > 0 else False
         r = float(rewards[0]) if len(rewards) > 0 else 0.0
 
-        # on new episode start, open step CSV if enabled
+        # on new episode start, open step CSV 
         if self.ep_steps == 0 and self.step_stride is not None and self._step_csv_file is None:
             self._start_step_csv()
 
@@ -576,7 +566,7 @@ class TrainLogger(BaseCallback):
 
         # step-level logging
         if self.step_stride is not None and (self.ep_steps % self.step_stride == 0):
-            # pull signals
+           
             env = self.training_env.envs[0].unwrapped
             dist_to_goal = getattr(env, "_get_goal_distance", lambda: float("nan"))()
             min_front = float(info.get("min_front", np.nan))
@@ -606,7 +596,7 @@ class TrainLogger(BaseCallback):
             self.writer.add_scalar(f"{self.tag}_step/alt_err",      alt_err,         self.global_step)
             self.global_step += 1
 
-        # episode end?
+       
         if done:
             reason = info.get("terminated_reason") or "done"
             success = 1 if reason == "success" else 0
@@ -814,7 +804,7 @@ class PPOEval:
                 steps = 0
                 term_reason = None
 
-                # Per-step CSV (optional)
+                # Per-step CSV 
                 if self.step_stride is not None:
                     step_csv = os.path.join(self.step_log_dir, f"steps_ep{ep}.csv")
                     fstep = open(step_csv, "w", newline="")
@@ -833,7 +823,6 @@ class PPOEval:
                     steps += 1
                     ep_rew += float(reward)
 
-                    # Step-level logging if enabled and respecting stride
                     if self.step_stride is not None and (steps % self.step_stride == 0):
                         dist_to_goal = env._get_goal_distance()
                         min_front = float(info.get("min_front", np.nan))
@@ -896,22 +885,14 @@ class PPOEval:
 
 # ======================= Multi-drone concurrent evaluation =======================
 class MultiEvalPPO:
-    """
-    Concurrent multi-drone evaluation of ONE trained PPO model.
+    
+    # Concurrent multi-drone evaluation of ONE trained PPO model.
 
-    Modes:
-      - Per-drone reset (default): only the colliding drone resets itself.
-      - Global reset on any collision: first collision forces a full sim reset;
-        all drones stop their current episode and restart (optionally staggered).
+    # Modes:
+    #   - Per-drone reset (default): only the colliding drone resets itself.
+    #   - Global reset on any collision: first collision forces a full sim reset;
+    #     all drones stop their current episode and restart (optionally staggered).
 
-    Logging cadence:
-      - log_every: "episode", "step", or integer N (every N steps)
-
-    Staggering:
-      - stagger_sec: Drone[i] starts at i * stagger_sec
-      - stagger_on_global_reset: re-apply staggering after global reset
-      - inter_episode_delay_sec: pause each drone inserts between its own episodes
-    """
     def __init__(self, model_path: str, vehicle_names: List[str],
                  lidar_name: str = LIDAR_NAME_DEFAULT,
                  episodes: int = 5,
@@ -956,7 +937,7 @@ class MultiEvalPPO:
         # --- Shared sync objects for global reset mode ---
         self._want_global_reset = threading.Event()
         self._reset_barrier = threading.Barrier(len(self.vehicle_names))
-        self._print_lock = threading.Lock()  # pretty console prints
+        self._print_lock = threading.Lock()  # console prints
 
     def run(self):
         threads = []
@@ -1081,13 +1062,13 @@ class MultiEvalPPO:
             with self._print_lock:
                 print(f"[{vehicle_name}] ep={ep} steps={steps} return={ep_rew:.2f} result={term_reason}")
 
-            # --- Global reset coordination (optional) ---
+            # --- Global reset coordination  ---
             if self.global_reset_on_any_collision:
                 # If THIS drone collided, request a global reset
                 if term_reason == "collision":
                     self._want_global_reset.set()
 
-                # Rendezvous: everyone waits here
+                
                 self._reset_barrier.wait()
 
                 # Leader performs the sim reset if needed
@@ -2070,3 +2051,4 @@ if __name__ == "__main__":
 
 
     pass
+
