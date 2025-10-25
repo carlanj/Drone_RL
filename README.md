@@ -210,13 +210,13 @@ Both conservative (slower, smoother control loops) and aggressive (faster, highe
 .
 ├── CODE/
 │   ├── Common/                         # Shared env helpers, logging utilities, callbacks
-│   ├── core_env.py                     # Core AirSim <-> Gym environment (discrete + continuous):contentReference[oaicite:25]{index=25}
+│   ├── core_env.py                     # Core AirSim <-> Gym environment (discrete + continuous)
 │   ├── run_dqn.py                      # Train DQN agent
 │   ├── run.py                          # Train PPO / DDPG agent(s)
-│   ├── eval_dqn.py                     # Evaluate DQN policy + auto-landing routine:contentReference[oaicite:26]{index=26}
-│   ├── eval_ppo.py                     # Evaluate PPO policy + landing and logging:contentReference[oaicite:27]{index=27}
+│   ├── eval_dqn.py                     # Evaluate DQN policy + auto-landing routine
+│   ├── eval_ppo.py                     # Evaluate PPO policy + landing and logging
 │   ├── eval_ddpg.py                    # Evaluate DDPG policy
-│   └── MAKE_TENSORS.py                 # Convert spreadsheet logs → TensorBoard events:contentReference[oaicite:28]{index=28}
+│   └── MAKE_TENSORS.py                 # Convert spreadsheet logs → TensorBoard events
 │
 ├── CONFIG/
 │   └── SETTINGS/                       # JSON configs / scenario settings for runs
@@ -226,8 +226,8 @@ Both conservative (slower, smoother control loops) and aggressive (faster, highe
 │   └── normaldev/                      # Baseline / conservative-control experiment data
 │
 ├── DOCUMENTATION/
-│   ├── FINAL_DRAFT.docx                # Full thesis draft (Word):contentReference[oaicite:29]{index=29}
-│   ├── FINAL_DRAFT.pdf                 # Final thesis PDF:contentReference[oaicite:30]{index=30}
+│   ├── FINAL_DRAFT.docx                # Full thesis draft (Word)
+│   ├── FINAL_DRAFT.pdf                 # Final thesis PDF
 │   └── PROPOSAL.doc                    # Original research proposal
 │
 ├── MODELS/
