@@ -1,11 +1,8 @@
-# Machine Learning-Based Drone Navigation and Sensor Mapping in Simulated 3D Environments
+# Machine Learning-Based Drone Navigation and Sensor Mapping in Simulated 3D Environments - Carlan Jackson, M.S., Alabama A&M University (2025)**:contentReference[oaicite:0]{index=0}
 
 ## Overview
 
 This repository contains the code, simulation pipeline, training logs, evaluation results, and media associated with:
-
-**“Machine Learning-Based Drone Navigation and Sensor Mapping in Simulated 3D Environments”  
-Carlan Jackson, M.S., Alabama A&M University (2025)**:contentReference[oaicite:0]{index=0}
 
 The project trains autonomous quadrotor agents in a high-fidelity Unreal Engine / Microsoft AirSim environment to:
 - avoid obstacles,
@@ -70,7 +67,7 @@ These are written to:
 - Per-episode CSVs
 - Optional per-step CSVs for deep debugging
 
-There’s also a utility (`MAKE_TENSORS.py`) that converts spreadsheet logs from experiments into TensorBoard event files so different algorithms / runs can be compared visually:contentReference[oaicite:10]{index=10}.
+There’s also a utility (`MAKE_TENSORS.py`) that converts spreadsheet logs from evaluations  into TensorBoard event files so different algorithms / runs can be compared visually:contentReference[oaicite:10]{index=10}.
 
 ---
 
