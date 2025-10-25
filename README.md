@@ -1,4 +1,4 @@
-# Machine Learning-Based Drone Navigation and Sensor Mapping in Simulated 3D Environments - Carlan Jackson, M.S., Alabama A&M University (2025)**:contentReference[oaicite:0]{index=0}
+# Machine Learning-Based Drone Navigation and Sensor Mapping in Simulated 3D Environments - Carlan Jackson, M.S., Alabama A&M University (2025)
 
 ## Overview
 
