@@ -79,7 +79,7 @@ Each observation given to the agent is a single fused vector made of:
    - A simulated 360° LiDAR ring is sampled around the drone.
    - Distances are clipped, then downsampled into a fixed number of angular bins.
    - Values are normalized to `[0, 1]`.  
-   This captures local free space and obstacle proximity without sending the full raw point cloud to the network:contentReference[oaicite:11]{index=11}:contentReference[oaicite:12]{index=12}.
+   This captures local free space and obstacle proximity without sending the full raw point cloud to the network
 
 2. **Ego-state and goal features**  
    - Body-frame linear velocities (vx, vy, vz_up)  
@@ -90,7 +90,7 @@ Each observation given to the agent is a single fused vector made of:
 Together, this gives the policy awareness of:
 - “What’s around me?”
 - “How am I currently moving?”
-- “Where should I go next?”:contentReference[oaicite:13]{index=13}:contentReference[oaicite:14]{index=14}
+- “Where should I go next?”
 
 ---
 
@@ -105,7 +105,7 @@ The policy picks from a finite set of motion primitives, e.g.:
 - strafe left / strafe right,
 - ascend / descend.
 
-This is well-suited for DQN because Q-learning over a fixed action set is stable and sample-efficient:contentReference[oaicite:15]{index=15}.
+This is well-suited for DQN because Q-learning over a fixed action set is stable and sample-efficient
 
 ### Continuous control (used by PPO / DDPG)
 The policy outputs a 4D continuous vector:
@@ -115,7 +115,7 @@ The policy outputs a 4D continuous vector:
 - `vx, vy`: body-frame horizontal velocities  
 - `vz_up`: vertical velocity in the drone’s up direction
 
-Each component is clipped to physically reasonable limits (forward speed caps, max climb rate, etc.), producing smooth, physically consistent motion in AirSim:contentReference[oaicite:16]{index=16}:contentReference[oaicite:17]{index=17}:contentReference[oaicite:18]{index=18}.
+Each component is clipped to physically reasonable limits (forward speed caps, max climb rate, etc.), producing smooth, physically consistent motion in AirSim
 
 ---
 
@@ -142,7 +142,7 @@ The reward signal is shaped to balance safety, efficiency, and goal completion:
   + Large positive reward for reaching and landing at/near the goal object  
   – Large negative penalty on collision
 
-This structure teaches agents not just “don’t crash,” but “get to the goal efficiently, safely, and cleanly”:contentReference[oaicite:19]{index=19}:contentReference[oaicite:20]{index=20}.
+This structure teaches agents not just “don’t crash,” but “get to the goal efficiently, safely, and cleanly”
 
 ---
 
@@ -167,7 +167,7 @@ This structure teaches agents not just “don’t crash,” but “get to the go
 4. **Evaluation**
    - Run the trained agent in deterministic mode.
    - If it reaches the goal radius, trigger an automated landing and disarm procedure.
-   - Record final return and outcome (success/collision/etc.):contentReference[oaicite:21]{index=21}:contentReference[oaicite:22]{index=22}.
+   - Record final return and outcome (success/collision/etc.)
 
 ---
 
@@ -190,7 +190,7 @@ This structure teaches agents not just “don’t crash,” but “get to the go
 - Allows fine-grained velocity/yaw control
 - More sensitive to tuning and exploration noise
 
-All three are trained and evaluated in the same LiDAR-based environment with the same reward model so the comparison is fair across policy families (on-policy vs off-policy) and action spaces (discrete vs continuous):contentReference[oaicite:23]{index=23}.
+All three are trained and evaluated in the same LiDAR-based environment with the same reward model so the comparison is fair across policy families (on-policy vs off-policy) and action spaces (discrete vs continuous)
 
 ---
 
@@ -200,7 +200,7 @@ All three are trained and evaluated in the same LiDAR-based environment with the
 - **DQN** learned to reach goals and avoid collisions using only discrete motion primitives. It converged quickly in structured layouts.
 - **DDPG** showed precise control in continuous space but demanded more care in tuning noise, stability, and update cadence.
 
-Both conservative (slower, smoother control loops) and aggressive (faster, higher-speed, tighter response) settings were tested. Agents in both regimes were able to reach the goal region and perform controlled landings in simulation:contentReference[oaicite:24]{index=24}.
+Both conservative (slower, smoother control loops) and aggressive (faster, higher-speed, tighter response) settings were tested. Agents in both regimes were able to reach the goal region and perform controlled landings in simulation
 
 ---
 
