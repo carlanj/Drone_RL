@@ -175,7 +175,7 @@ This structure teaches agents not just “don’t crash,” but “get to the go
    - Reward is computed.
    - Episode continues until success, collision, or termination condition.
 
-3. **Logging**<img width="576" height="287" alt="dqn_tensor" src="https://github.com/user-attachments/assets/6d3a701d-cf62-4dcd-99e5-0701185da299" />
+3. **Logging**
    - Per-step and per-episode metrics are written to CSV and TensorBoard.
    - “Best model” snapshots and rolling checkpoints are saved.
 
@@ -183,7 +183,7 @@ This structure teaches agents not just “don’t crash,” but “get to the go
    - Run the trained agent in deterministic mode.
    - If it reaches the goal radius, trigger an automated landing and disarm procedure.
    - Record final return and outcome (success/collision/etc.)
-
+<img width="576" height="287" alt="dqn_tensor" src="https://github.com/user-attachments/assets/6d3a701d-cf62-4dcd-99e5-0701185da299" />
 ---
 
 ## Algorithms
