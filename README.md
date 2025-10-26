@@ -103,8 +103,7 @@ Each observation given to the agent is a single fused vector made of:
    This captures local free space and obstacle proximity without sending the full raw point cloud to the network
 
 
-
-<img width="400" height="400" alt="slam_map" src="https://github.com/user-attachments/assets/90861c7b-45fb-4cb9-b98a-aeead6003238" />
+<img width="505" height="409" alt="topdown" src="https://github.com/user-attachments/assets/22b5ceea-11e9-4e5e-b37d-1449f205f8c4" />
 <img width="505" height="409" alt="topdown" src="https://github.com/user-attachments/assets/22b5ceea-11e9-4e5e-b37d-1449f205f8c4" />
 
 
@@ -188,6 +187,7 @@ This structure teaches agents not just “don’t crash,” but “get to the go
    - Action is applied via `moveByVelocityBodyFrameAsync(...)` for a short duration.
    - Reward is computed.
    - Episode continues until success, collision, or termination condition.
+<img width="576" height="287" alt="dqn_tensor" src="https://github.com/user-attachments/assets/6d3a701d-cf62-4dcd-99e5-0701185da299" />
 
 3. **Logging**
    - Per-step and per-episode metrics are written to CSV and TensorBoard.
@@ -228,6 +228,12 @@ All three are trained and evaluated in the same LiDAR-based environment with the
 - **PPO** produced stable, smooth navigation and reliable goal completion once converged.
 - **DQN** learned to reach goals and avoid collisions using only discrete motion primitives. It converged quickly in structured layouts.
 - **DDPG** showed precise control in continuous space but demanded more care in tuning noise, stability, and update cadence.
+- 
+<img width="1997" height="668" alt="eval_tensors" src="https://github.com/user-attachments/assets/ead1a5bb-cc7b-4195-9b6e-505d2a5f8b51" />
+<img width="1989" height="651" alt="eval_tesnsors_agg" src="https://github.com/user-attachments/assets/d3b40c96-a9ec-4bb9-99ca-812023d1416c" />
+
+
+
 
 Both conservative (slower, smoother control loops) and aggressive (faster, higher-speed, tighter response) settings were tested. Agents in both regimes were able to reach the goal region and perform controlled landings in simulation
 
