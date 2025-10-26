@@ -9,6 +9,27 @@ The project trains autonomous quadrotor agents in a high-fidelity Unreal Engine 
 - navigate toward a goal,
 - and land safely near a designated target.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Three deep reinforcement learning (DRL) algorithms are implemented and compared under consistent sensing, reward, and environment conditions:
 - **Deep Q-Network (DQN)** – off-policy, discrete action space
 - **Proximal Policy Optimization (PPO)** – on-policy, continuous action space
@@ -80,6 +101,14 @@ Each observation given to the agent is a single fused vector made of:
    - Distances are clipped, then downsampled into a fixed number of angular bins.
    - Values are normalized to `[0, 1]`.  
    This captures local free space and obstacle proximity without sending the full raw point cloud to the network
+
+
+
+<img width="400" height="400" alt="slam_map" src="https://github.com/user-attachments/assets/90861c7b-45fb-4cb9-b98a-aeead6003238" />
+<img width="505" height="409" alt="topdown" src="https://github.com/user-attachments/assets/22b5ceea-11e9-4e5e-b37d-1449f205f8c4" />
+
+
+
 
 2. **Ego-state and goal features**  
    - Body-frame linear velocities (vx, vy, vz_up)  
