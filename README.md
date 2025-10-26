@@ -10,7 +10,7 @@ The project trains autonomous quadrotor agents in a high-fidelity Unreal Engine 
 - and land safely near a designated target.
 
 
-https://github.com/user-attachments/assets/7e1bc8d3-5226-4cf0-9c81-0321608337f9
+https://github.com/user-attachments/assets/6cd8000f-9a9f-4a8e-ab4d-41d08b43b59d
 
 
 
