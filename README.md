@@ -90,7 +90,7 @@ Each observation given to the agent is a single fused vector made of:
    This captures local free space and obstacle proximity without sending the full raw point cloud to the network
 
 
-<img width="505" height="409" alt="topdown" src="https://github.com/user-attachments/assets/22b5ceea-11e9-4e5e-b37d-1449f205f8c4" />
+<img width="505" height="409" alt="topdown" src="https://github.com/user-attachments/assets/22b5ceea-11e9-4e5e-b37d-1449f205f8c4" >
 <img width="400" height="400" alt="slam_map" src="https://github.com/user-attachments/assets/4bb554ae-605d-458f-bdca-d3aae3f04d40" />
 
 
